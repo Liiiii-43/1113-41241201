@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google 註冊與登入範例</title>
+    <!-- 引入 Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getDatabase, ref, set, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+        // Firebase 配置
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5Q8n0g6xuxsAFum9A1M4qXlI0j12hobc",
+            authDomain: "test1-7407e.firebaseapp.com",
+            projectId: "test1-7407e",
+            storageBucket: "test1-7407e.appspot.com",
+            messagingSenderId: "270158273026",
+            appId: "1:270158273026:web:1be616e137ac538f65651b",
+            measurementId: "G-GKD51BRQSK"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+        const provider = new GoogleAuthProvider();
+
+        // 註冊函數
+        window.registerWithGoogle = function () {
+            signInWithPopup(auth, provider)
+                .then((result) => {
+                    const user = result.user;
+                    const now = new Date().toISOString();
+                    // 將會員資料寫入 Firebase Realtime Database
+                    set(ref(database, 'users/' + user.uid), {
+                        name: user.displayName,
+                        email: user.email,
+                        photoURL: user.photoURL,
+                        registrationTime: now,
+                        lastLogin: now,
+                    });
+                    document.getElementById("message").innerHTML = `
+                        <h3>註冊成功，現在您可以登入！</h3>
+                        <p>名稱：${user.displayName}</p>
+                        <p>電子郵件：${user.email}</p>
+                        <img src="${user.photoURL}" alt="Profile Picture" style="width: 100px; height: 100px;"/>
+                    `;
+                })
+                .catch((error) => {
+                    console.error("註冊失敗：", error.message);
+                    document.getElementById("message").innerHTML = `<p>註冊失敗：${error.message}</p>`;
+                });
+        };
+
+        // 登入函數
+        window.signInWithGoogle = function () {
+            signInWithPopup(auth, provider)
+                .then((result) => {
+                    const user = result.user;
+                    const now = new Date().toISOString();
+                    // 更新最後登入時間
+                    update(ref(database, 'users/' + user.uid), {
+                        lastLogin: now,
+                    });
+                    displayUserInfo(user, now);
+                })
+                .catch((error) => {
+                    console.error("登入失敗：", error.message);
+                    document.getElementById("message").innerHTML = `<p>登入失敗：${error.message}</p>`;
+                });
+        };
+
+        // 顯示用戶資訊
+        function displayUserInfo(user, lastLogin) {
+            document.getElementById("user-info").innerHTML = `
+                <h3>登入成功！</h3>
+                <p>名稱：${user.displayName}</p>
+                <p>電子郵件：${user.email}</p>
+                <p>最後登入時間：${lastLogin}</p>
+                <img src="${user.photoURL}" alt="Profile Picture" style="width: 100px; height: 100px;"/>
+                <br><button onclick="signOutUser()">登出</button>
+            `;
+        }
+
+        // 登出函數
+        function signOutUser() {
+            signOut(auth)
+                .then(() => {
+                    console.log("已登出");
+                    document.getElementById("user-info").innerHTML = `
+                        <button onclick="signInWithGoogle()">使用 Google 登入</button>
+                        <button onclick="registerWithGoogle()">使用 Google 註冊</button>
+                    `;
+                })
+                .catch((error) => {
+                    console.error("登出失敗：", error.message);
+                });
+        }
+    </script>
+</head>
+<body>
+    <h1>歡迎使用 Google 註冊與登入範例</h1>
+
+    <!-- 訊息顯示 -->
+    <div id="message"></div>
+
+    <!-- 按鈕選擇 註冊 或 登入 -->
+    <div id="user-info">
+        <button onclick="registerWithGoogle()">使用 Google 註冊</button>
+        <button onclick="signInWithGoogle()">使用 Google 登入</button>
+    </div>
+</body>
+</html>
